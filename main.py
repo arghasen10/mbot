@@ -1,21 +1,8 @@
 import numpy as np 
 import sys
-import matplotlib
-import matplotlib.pyplot as plt
-# import plotly.express as px
-import seaborn as sns
-import os
-import cv2
-from collections import defaultdict
-import pandas as pd 
-from sklearn.cluster import KMeans
-from sklearn.preprocessing import MinMaxScaler
-# matplotlib.use('TkAgg') 
-from matplotlib.animation import FuncAnimation
-from sklearn.cluster import KMeans
 from sklearn.cluster import DBSCAN
-import itertools
 import struct
+from model import get_fused_cnn_model, train_cnn
 
 class FrameConfiguration:
     def __init__(self):
@@ -199,7 +186,7 @@ def main():
         np_frame=i_qvalues(np_frame)
         reshaped_np_frame=reshape_frame(np_frame)
         range_result=range_FFT(reshaped_np_frame)
-        range_vals.append(np.abs(range_result).sum(axis=0).sum(axis=0).sum(axis=0)[0])
+        range_vals.append(np.abs(range_result).sum(axis=0).sum(axis=0).sum(axis=0))
         # range_result=clutter_removal(range_result,axis=2)
         dopplerResult=dopplerFFT(range_result,frameconfig)
         dopplerResultabs=np.absolute(dopplerResult)
@@ -218,9 +205,16 @@ def main():
         angle_vals.append(range_angle_abs)
         avg_speed = ((l_omega+r_omega)/2)
         avg_speed_x = avg_speed*np.cos(angle)
+        print(avg_speed, avg_speed_x)
         avg_speed_y = avg_speed*np.sin(angle)
         gt_vals.append((avg_speed_x, avg_speed_y))
 
+    range_vals = np.array([range_vals[i:i+2] for i in range(len(range_vals)-1)]).transpose(0,2,1)
+    dop_vals = np.array([dop_vals[i:i+2] for i in range(len(dop_vals)-1)]).transpose(0,2,3,1)
+    angle_vals = np.array([angle_vals[i:i+2] for i in range(len(angle_vals)-1)]).transpose(0,3,2,1)
+    gt_vals = np.array(gt_vals)
+    model = get_fused_cnn_model()
+    model = train_cnn(model,dop_vals,angle_vals,range_vals,gt_vals[:-1,0],gt_vals[:-1,1],20)
 
 if __name__ == "__main__":
     main()
